@@ -18,7 +18,7 @@ Offline-jono säilyttää lähettämättömät rivit puhelimen `localStorage`ssa
 1. Luo tyhjä Google Sheets -tiedosto, esimerkiksi nimellä "FD-tiedonkeruu".
 2. Avaa *Laajennukset → Apps Script*, liitä `apps-script/Code.gs` sinne ja tallenna.
 3. Valitse editorissa funktio `setup` ja aja se. Hyväksy käyttöoikeudet. Data-, Tilastot- ja Ikähaku-välilehdet sekä kaaviot syntyvät.
-4. Palaa taulukkoon ja päivitä sivu, jolloin **FD-keruu**-valikko tulee näkyviin. Valitse *FD-keruu → Aseta token* ja liitä token `index.html`:n `CONFIG.TOKEN`-kohdasta.
+4. Palaa taulukkoon ja päivitä sivu, jolloin **FD-keruu**-valikko tulee näkyviin. Valitse *FD-keruu → Aseta token* ja liitä token `index.html`:n `CONFIG.TOKEN`-kohdasta. Jos valikkokomento jää pyörimään (tavallista, kun selaimessa on useampi Google-tili), aseta token Apps Script -editorissa: *Projektin asetukset → Komentosarjan ominaisuudet → Lisää*: ominaisuus `TOKEN`, arvo token ilman lainausmerkkejä.
 5. Apps Scriptissä: *Ota käyttöön → Uusi käyttöönotto → Verkkosovellus*.
    - Suorita käyttäjänä: **Minä**
    - Käyttöoikeus: **Kuka tahansa**

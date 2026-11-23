@@ -1,7 +1,7 @@
 # SUUNNITELMA – FD-tiedonkeruu (index.html → Google Sheets)
 
 Työnimi: **fd-keruu**
-Tila: suunnitelma valmis, koodaus myöhemmin
+Tila: **toteutettu ja käytössä 23.11.2026**: https://tkoljonen-wq.github.io/fd-keruu/ (repo tkoljonen-wq/fd-keruu). Käyttöönotto- ja päivitysohjeet: README.md.
 Tarkoitus: kartoittaa fiksaatiodisparaation (FD) yleisyyttä eri suunnissa (vertikaalinen, horisontaalinen exo ja eso) ja sitä, kuinka suuri osa löydöksistä on uusia.
 
 Kokonaisuus:
@@ -32,7 +32,7 @@ Kokonaisuus:
 - **Ei taustapalvelinta.** GitHub Pages tarjoilee staattisen HTML:n, ja Apps Script toimii backendinä.
 - POST lähetetään `Content-Type: text/plain` -otsikolla, jotta selain ei tee CORS-preflightia. Body on JSON-merkkijono.
 - Apps Script palauttaa aina JSONia (`ContentService`).
-- GDPR:ää ei tarvita: kerätään vain ikä ja löydökset, ei tunnisteita.
+- Tietosuoja: kerätään vain päivämäärä (ei kellonaikaa), ikä ja löydökset, ei tunnisteita.
 
 ---
 
@@ -271,89 +271,36 @@ Kaaviot sijoitetaan taulukoiden oikealle puolelle (sarakkeesta I eteenpäin). V�
 
 ## 8. Repon rakenne
 
-```
-fd-keruu/
-├── index.html          # Syöttö + Tilastot (GitHub Pages juuresta)
-├── apps-script/
-│   └── Code.gs         # kopioidaan Sheetsin Apps Script -editoriin
-├── README.md           # käyttöönotto + tilastojen määritelmät
-└── SUUNNITELMA.md      # tämä tiedosto
-```
+Ks. README.md (kohta Tiedostot). Lisäksi `dev/` sisältää paikallisen testipalvelimen ja automaattiset hyväksymistestit (`node dev/testit.js`), jotka ajavat oikeaa Code.gs:ää jäljitellyllä Sheetsillä.
 
 ---
 
-## 9. Käyttöönotto (README:hen)
+## 9. Hyväksymistestit
 
-1. Luo tyhjä Google Sheets -tiedosto ("FD-tiedonkeruu").
-2. *Laajennukset → Apps Script*: liitä `Code.gs` ja tallenna.
-3. Aja `setup()`, hyväksy käyttöoikeudet ja aseta token Script Propertiesiin. Data- ja Tilastot-välilehdet sekä kaaviot syntyvät.
-4. *Ota käyttöön → Uusi käyttöönotto → Verkkosovellus*: suorita käyttäjänä **Minä**, käyttöoikeus **Kuka tahansa**.
-5. Liitä `/exec`-URL ja token `index.html`:n `CONFIG`-kohtaan.
-6. Testaa selaimessa: `…/exec` palauttaa terveystarkistuksen, `…/exec?action=stats&token=…` tilastot.
-7. Pushaa GitHubiin: *Settings → Pages → main / root*.
-8. Syötä testirivi ja tarkista Data, Tilastot ja index.html:n Tilastot-välilehti.
+Syötön validointi, tuplien esto, token, tilastojen luvut, ikähaku ja tyhjä aineisto on automatisoitu (`dev/testit.js`, 48 testiä). Selaimessa testattu: lomake, offline-jono, ikähaku, jaettu linkki, virhetila ja tyhjä aineisto. Tuotannossa varmistettu: Sheetsin kaavat ilman virheitä ja tallennus puhelimelta.
 
-**Päivitykset:** kun Code.gs muuttuu, valitse *Hallinnoi käyttöönottoja → muokkaa → Uusi versio*, jolloin URL pysyy samana. Jos taulukon asettelu muuttuu, aja valikosta *Rakenna tilastot ja kaaviot uudelleen*.
+Käsin tarkistettavat (ei automatisoitavissa):
+- Sheetsin Tilastot/Ikähaku-välilehdet ja `?action=stats` antavat samalle aineistolle samat luvut.
+- *Rakenna uudelleen* ei monista kaavioita.
+- Kaksi samanaikaista lähetystä → kaksi ehjää riviä (LockService).
 
 ---
 
-## 10. Hyväksymistestit
-
-**Syöttö**
-- [ ] Molemmat FD:t = ei → rivi tallentuu, ja G, H ja I ovat tyhjiä.
-- [ ] Vertikaalinen = kyllä ilman suuruutta → estetään lomakkeessa ja hylätään palvelimella.
-- [ ] Horisontaalinen = kyllä ilman suuntaa → hylätään.
-- [ ] Ikä 3 ja 95 hyväksytään (ei ikärajaa). Tyhjä, negatiivinen, desimaali (`34,5`) tai teksti hylätään.
-- [ ] `1,5` ja `1.5` tallentuvat molemmat numerona 1.5.
-- [ ] `0,3`, `1,75` ja `12` hyväksytään (ei 0,25-jaollisuutta, ei ylärajaa).
-- [ ] `0`, `-1`, `1,2,3`, `abc` ja `1,` hylätään.
-- [ ] Väärä token → `{ok:false}`, eikä riviä tallennu.
-- [ ] Sama UUID kahdesti → yksi rivi.
-- [ ] Kaksi samanaikaista lähetystä → kaksi ehjää riviä.
-
-**Tilastot**
-- [ ] Tyhjä Data-välilehti → kaikki näkymät näyttävät "–", eikä virheitä tule (sekä Sheets että index.html).
-- [ ] Testiaineisto (esim. 20 käsin laskettua riviä) → Sheetsin Tilastot ja `?action=stats` antavat **täsmälleen samat** luvut, ja ne vastaavat käsin laskettuja.
-- [ ] Exo % + eso % = horisontaalinen % (pyöristystä lukuun ottamatta).
-- [ ] Uusi + aiemmin todettu = löydökset kaikissa suunnissa.
-- [ ] Uusi rivi näkyy Sheetsin kaavioissa heti ja index.html:n Tilastoissa viimeistään seuraavalla päivityksellä (tai heti tallennuksen jälkeen).
-- [ ] *Rakenna uudelleen* ei monista kaavioita.
-- [ ] Ikähaku 25–45: Sheetsin Ikähaku-välilehti ja `?action=stats&ika_min=25&ika_max=45` antavat samat luvut. Rajat ovat mukaan lukevia (25- ja 45-vuotiaat mukana).
-- [ ] Ikähaku vain alarajalla tai vain ylärajalla toimii.
-- [ ] Ikähaku, jossa alkaen > asti → virheilmoitus, eikä hakua tehdä.
-- [ ] Tyhjä haarukka → "Ei asiakkaita valitulla ikävälillä", ei virhettä.
-- [ ] Rajaus säilyy automaattipäivityksessä ja jaetussa linkissä.
-- [ ] Tilastot-välilehti toimii iPadin Safarissa ja Androidin Chromessa, ja kaaviot skaalautuvat leveyteen.
-
----
-
-## 11. Toteutusvaiheet
-
-1. **Code.gs, perusta**: `setup`, `doPost`, validointi ja terveystarkistus. Testataan curlilla.
-2. **Code.gs, tilastot**: `laskeTilastot_` ikärajauksineen ja `doGet?action=stats`. Testataan testiaineistolla.
-3. **Sheets Tilastot- ja Ikähaku-välilehdet**: `rakennaTilastot_` kaavoineen ja kaavioineen. Verrataan lukuja vaiheen 2 tuloksiin.
-4. **index.html, Syöttö** (vapaa desimaalisyöttö pilkulla tai pisteellä).
-5. **index.html, Tilastot ja ikähaku**: kortit, SVG-kaaviot, taulukko, ikähaku ja automaattipäivitys.
-6. **README** ja GitHub Pages -julkaisu.
-7. *(Valinnainen)* Offline-jono syötölle (`localStorage`), Wilsonin luottamusvälit ja CSV-vienti.
-
----
-
-## 12. Päätökset
-
-Ei avoimia kysymyksiä, ja suunnitelma on valmis koodattavaksi.
+## 10. Päätökset
 
 - Ikäryhmät tilastoissa: <20 / 20–39 / 40–59 / 60+. Lisäksi vapaa ikähaku.
 - Iän syötölle ei ole rajaa: kokonaisluku ≥ 0.
 - Suuruuksille ei ylärajaa eikä askelta. Desimaalierottimeksi kelpaavat pilkku ja piste.
 - Suuruuksista raportoidaan keskiarvo ja mediaani.
-- "Aiemmin"-kentissä vain kyllä/ei.
+- "Aiemmin"-kentissä vain kyllä/ei. Horisontaalisen "aiemmin" on yhteinen exolle ja esolle.
 - Mittausmenetelmää ei kirjata.
 - Tilastojen katseluun käytetään samaa tokenia kuin syöttöön.
+- **PWA** (Android Chrome, standalone): manifest (`id: "fd-keruu"`), PNG-ikonit, network first -service worker (välimuistin etuliite `fd-keruu-`) ja oma Asenna-painike.
+- **Aikaleima vain päivämääränä**, jottei riviä voi yhdistää yksittäiseen käyntiin ajanvarauskalenterin kautta.
+- **Toteutettu valinnaisista**: offline-jono syötölle ja Sheetsin kaavio 4 *Exo vs eso*. **Ei toteutettu**: Wilsonin luottamusvälit ja CSV-vienti.
 
-### Lisäpäätökset 23.11.2026
-- **PWA**: index.html tehdään asennettavaksi PWA:ksi (Android Chrome, standalone). Mukaan `manifest.json` (`start_url: "."`, `id: "fd-keruu"`), PNG-ikonit (`icons/icon-192.png`, `icon-512.png`, `icon-maskable.png`), `sw.js` (network first, `cache: 'no-cache'`, välimuistin etuliite `fd-keruu-`, activate poistaa vain omat vanhat välimuistit) ja oma Asenna-painike `beforeinstallprompt`-tapahtumalla. Repon rakenteeseen lisätään nämä tiedostot.
-- **Aikaleima vain päivämääränä** (sarake A, muoto `yyyy-mm-dd`, palvelimen asettama). Tarkka kellonaika jätetään pois, jottei riviä voi yhdistää yksittäiseen käyntiin ajanvarauskalenterin kautta (anonymiteetti, GDPR).
-- **Toteutetaan valinnaisista**: offline-jono syötölle (`localStorage`, oma avainetuliite `fd-keruu-`; lähetys automaattisesti yhteyden palatessa, UUID estää tuplat) ja Sheetsin kaavio 4 *Exo vs eso* (piirakka/donitsi).
-- **Ei toteuteta nyt**: Wilsonin luottamusvälit ja CSV-vienti.
-- **GitHub**: Claude alustaa gitin, luo repon `fd-keruu` gh-komennolla, pushaa ja ottaa GitHub Pagesin käyttöön (kysyy vielä ennen pushia).
+### Toteutuksen poikkeamat suunnitelmasta
+- Ikäkenttä on `type="text" inputmode="numeric"` (puhdas numeronäppäimistö Androidilla).
+- Valikon "Testirivi" on *Itsetesti*, joka ei kirjoita mitään.
+- Sheetsin Tilastot-välilehdellä on lisäsarakkeet "aiemmin todettu" -luvuille, joten kaaviot alkavat sarakkeesta L.
+- Sheets-kaavat kirjoitetaan taulukon aluekohtaisella argumenttierottimella (fi: puolipiste), joka tunnistetaan testikaavalla.
