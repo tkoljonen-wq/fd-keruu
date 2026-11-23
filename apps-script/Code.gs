@@ -466,7 +466,7 @@ function valmisteleValilehti_(ss, nimi, indeksi) {
 function kirjoitaLohkoA_(sh, alku, ala, yla) {
   const ehto = ikaEhto_(ala, yla);
   const nRef = '$B$' + alku;
-  sh.getRange(alku, 1, 1, 2).setValues([['N (asiakkaita)', '=' + countifs_(ehto, [])]]).setFontWeight('bold');
+  kirjoita_(sh.getRange(alku, 1, 1, 2), [['N (asiakkaita)', '=' + countifs_(ehto, [])]]).setFontWeight('bold');
 
   const otsRivi = alku + 2;
   sh.getRange(otsRivi, 1, 1, 10).setValues([['Tunnusluku', 'n', '% kaikista', 'Uusia n',
@@ -501,7 +501,7 @@ function kirjoitaLohkoA_(sh, alku, ala, yla) {
     ['Molemmat (V ja H)', '=' + countifs_(ehto, [[C, 'kyllä'], [D, 'kyllä']]),
       '=IFERROR(B' + r.molemmat + '/' + nRef + ',"–")'].concat(tyhjat)
   ];
-  sh.getRange(r.vert, 1, rivit.length, 10).setValues(rivit);
+  kirjoita_(sh.getRange(r.vert, 1, rivit.length, 10), rivit);
   ['C', 'E', 'F', 'H', 'I', 'J'].forEach(s =>
     sh.getRange(s + r.vert + ':' + s + r.molemmat).setNumberFormat('0.0%'));
   sh.getRange('B' + r.vert + ':J' + r.molemmat).setHorizontalAlignment('right');
@@ -516,7 +516,7 @@ function kirjoitaLohkoB_(sh, alku, a) {
   // Kaavio 1: jokaiselle suunnalle omat sarjat, jotta värit ovat suuntakohtaiset.
   const k1 = alku + 1;
   const pros = (sar, rivi) => '=IFERROR(' + sar + rivi + '/' + n + ',0)';
-  sh.getRange(k1, 1, 4, 7).setValues([
+  kirjoita_(sh.getRange(k1, 1, 4, 7), [
     ['Suunta', 'Vertikaalinen, uusi', 'Vertikaalinen, aiemmin', 'Exo, uusi', 'Exo, aiemmin', 'Eso, uusi', 'Eso, aiemmin'],
     ['Vertikaalinen', pros('D', r.vert), pros('G', r.vert), '', '', '', ''],
     ['Exo', '', '', pros('D', r.exo), pros('G', r.exo), '', ''],
@@ -527,7 +527,7 @@ function kirjoitaLohkoB_(sh, alku, a) {
   // Kaavio 2: uusien osuus löydöksistä.
   const k2 = k1 + 5;
   const osuus = rivi => '=IFERROR(D' + rivi + '/B' + rivi + ',0)';
-  sh.getRange(k2, 1, 4, 4).setValues([
+  kirjoita_(sh.getRange(k2, 1, 4, 4), [
     ['Suunta', 'Vertikaalinen', 'Exo', 'Eso'],
     ['Vertikaalinen', osuus(r.vert), '', ''],
     ['Exo', '', osuus(r.exo), ''],
@@ -537,7 +537,7 @@ function kirjoitaLohkoB_(sh, alku, a) {
 
   // Kaavio 4: exo vs eso.
   const k4 = k2 + 5;
-  sh.getRange(k4, 1, 3, 2).setValues([
+  kirjoita_(sh.getRange(k4, 1, 3, 2), [
     ['Horisontaalinen suunta', 'n'],
     ['Exo', '=B' + r.exo],
     ['Eso', '=B' + r.eso]
@@ -577,7 +577,7 @@ function kirjoitaIkaryhmat_(sh, alku) {
       '=IFERROR(' + loyd(eso.concat([[F, 'ei']])) + '/' + loyd(eso) + ',"–")'
     ];
   });
-  sh.getRange(alku + 1, 1, rivit.length, 8).setValues(rivit);
+  kirjoita_(sh.getRange(alku + 1, 1, rivit.length, 8), rivit);
   sh.getRange(alku + 1, 3, rivit.length, 6).setNumberFormat('0.0%').setHorizontalAlignment('right');
   return {
     otsikot: sh.getRange(alku, 1, rivit.length + 1, 1),
@@ -599,7 +599,7 @@ function kirjoitaSuuruudet_(sh, alku, ala, yla) {
   ];
   sh.getRange(alku, 1, 1, 4).setValues([['Suuruudet (Δ)', 'n', 'Keskiarvo', 'Mediaani']])
     .setFontWeight('bold').setBackground('#e8eef5');
-  sh.getRange(alku + 1, 1, 3, 4).setValues([
+  kirjoita_(sh.getRange(alku + 1, 1, 3, 4), [
     rivi('Vertikaalinen', G, [[C, 'kyllä']], C + '="kyllä"'),
     rivi('Exo', H, [[D, 'kyllä'], [I, 'exo']], D + '="kyllä",' + I + '="exo"'),
     rivi('Eso', H, [[D, 'kyllä'], [I, 'eso']], D + '="kyllä",' + I + '="eso"')
@@ -636,6 +636,20 @@ function lisaaKaavio2_(sh, alue, rivi, sarake) {
     .setOption('width', 600).setOption('height', 300)
     .setPosition(rivi, sarake, 0, 0).build();
   sh.insertChart(ch);
+}
+
+/**
+ * Kirjoittaa taulukon, jossa on sekä tekstiä että kaavoja. Kaavat asetetaan setFormula-kutsulla,
+ * joka hyväksyy aina englantilaisen syntaksin (pilkut). setValues tulkitsisi kaavat taulukon
+ * aluekohtaisella asetuksella (fi: puolipisteet), jolloin ne näyttäisivät virhettä.
+ */
+function kirjoita_(alue, rivit) {
+  alue.setValues(rivit.map(r => r.map(x => (typeof x === 'string' && x.charAt(0) === '=') ? '' : x)));
+  const r0 = alue.getRow(), s0 = alue.getColumn(), sh = alue.getSheet();
+  rivit.forEach((r, i) => r.forEach((x, j) => {
+    if (typeof x === 'string' && x.charAt(0) === '=') sh.getRange(r0 + i, s0 + j).setFormula(x);
+  }));
+  return alue;
 }
 
 function lisaaKaavio3_(sh, c, rivi, sarake) {
