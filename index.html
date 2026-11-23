@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FD-keruu</title>
+<meta name="description" content="Fiksaatiodisparaation (FD) anonyymi tiedonkeruu ja tilastot">
+<meta name="theme-color" content="#0F4C81">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>
+  // Asennuskehote talteen heti, ennen kuin sovelluksen skripti latautuu.
+  window.__installPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window.__installPrompt = e;
+    document.dispatchEvent(new Event('fd-asennettavissa'));
+  });
+</script>
+<style>
+  :root {
+    --teema: #0F4C81; --teema-tumma: #0a3860;
+    --tausta: #f3f5f8; --kortti: #ffffff; --teksti: #18212d; --heikko: #5b6676; --raja: #d3d9e1;
+    --vert: #0072B2; --vert-v: #9CC9E8;
+    --exo: #D55E00; --exo-v: #F1B58C;
+    --eso: #009E73; --eso-v: #8ED5BF;
+    --ok: #1e7d3a; --ok-tausta: #e3f4e7;
+    --virhe: #b00020; --virhe-tausta: #fde7ea;
+    --varoitus: #7a5200; --varoitus-tausta: #fff3c4;
+    --sade: 12px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--tausta); color: var(--teksti);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+  /* Yläpalkki */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--teema); color: #fff;
+    padding: calc(env(safe-area-inset-top) + 8px) 12px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+  }
+  .ylarivi { display: flex; align-items: center; gap: 8px; max-width: 760px; margin: 0 auto 8px; }
+  .ylarivi h1 { font-size: 1.15rem; margin: 0; flex: 1; letter-spacing: .02em; }
+  .merkki {
+    font-size: .8rem; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.18);
+    white-space: nowrap;
+  }
+  .merkki.jono { background: #ffb000; color: #2b1d00; font-weight: 600; border: 0; }
+  .asenna {
+    border: 1px solid rgba(255,255,255,.7); background: transparent; color: #fff;
+    border-radius: 999px; padding: 6px 14px; min-height: 36px; font-weight: 600;
+  }
+  .valilehdet {
+    display: flex; max-width: 760px; margin: 0 auto;
+    background: var(--teema-tumma); border-radius: 10px; padding: 3px;
+  }
+  .valilehdet button {
+    flex: 1; min-height: 44px; border: 0; border-radius: 8px; background: transparent;
+    color: #d6e3f0; font-weight: 600; font-size: 1rem;
+  }
+  .valilehdet button[aria-selected="true"] { background: #fff; color: var(--teema); }
+
+  main { max-width: 760px; margin: 0 auto; padding: 14px 12px 40px; }
+  .kortti, .tkortti { scroll-margin-top: 130px; }
+
+  /* Lomake */
+  .kortti {
+    background: var(--kortti); border: 1px solid var(--raja); border-radius: var(--sade);
+    padding: 14px; margin-bottom: 14px;
+  }
+  fieldset.kortti { min-width: 0; }
+  legend {
+    font-weight: 700; font-size: 1.05rem; padding: 0 6px; margin-left: -6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  legend::before { content: ""; width: 12px; height: 12px; border-radius: 3px; background: var(--vari, var(--teema)); }
+  fieldset.vert { --vari: var(--vert); }
+  fieldset.horis { --vari: var(--exo); }
+  .kentta { margin: 10px 0 14px; }
+  .kentta:last-child { margin-bottom: 4px; }
+  .nimio { display: block; font-weight: 600; margin-bottom: 6px; }
+  .nimio small { font-weight: 400; color: var(--heikko); }
+  input[type="text"] {
+    width: 100%; min-height: 50px; padding: 10px 12px; font-size: 1.15rem;
+    border: 1px solid var(--raja); border-radius: 10px; background: #fff;
+  }
+  input[type="text"]:focus { outline: 3px solid #ffb000; outline-offset: 1px; border-color: var(--teema); }
+  input[aria-invalid="true"] { border-color: var(--virhe); background: var(--virhe-tausta); }
+  .seg {
+    display: flex; border: 1px solid var(--raja); border-radius: 10px; overflow: hidden; background: #fff;
+  }
+  .seg.virheellinen { border-color: var(--virhe); }
+  .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+  .seg label {
+    flex: 1; min-height: 50px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.08rem; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .seg label + input + label { border-left: 1px solid var(--raja); }
+  .seg input:checked + label { background: var(--vari, var(--teema)); color: #fff; font-weight: 700; }
+  .seg input:focus-visible + label { outline: 3px solid #ffb000; outline-offset: -3px; }
+  .virhe { color: var(--virhe); font-size: .9rem; margin-top: 5px; min-height: 0; }
+  .virhe:empty { display: none; }
+  .painike {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--teema);
+    background: #fff; color: var(--teema); font-weight: 600;
+  }
+  .painike.ensisijainen { background: var(--teema); color: #fff; }
+  .painike.iso { width: 100%; min-height: 56px; font-size: 1.15rem; }
+  .painike:disabled { opacity: .55; cursor: default; }
+  .ilmoitus { border-radius: 10px; padding: 12px 14px; margin: 12px 0; font-weight: 600; }
+  .ilmoitus.ok { background: var(--ok-tausta); color: var(--ok); border: 1px solid #a8dcb6; }
+  .ilmoitus.virhe-ilm { background: var(--virhe-tausta); color: var(--virhe); border: 1px solid #f3b3bd; }
+  .ilmoitus.varoitus { background: var(--varoitus-tausta); color: var(--varoitus); border: 1px solid #ecd27c; }
+  .ilmoitus button { margin-top: 8px; }
+  .alarivi { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; color: var(--heikko); font-size: .92rem; }
+  .linkkinappi { background: none; border: 0; color: var(--teema); text-decoration: underline; padding: 4px 0; font-weight: 600; }
+
+  /* Tilastot */
+  .haku { padding: 12px; }
+  .haku .rivi { display: flex; gap: 8px; align-items: flex-end; }
+  .haku .rivi .kentta { flex: 1 1 60px; min-width: 0; margin: 0; }
+  .haku .nimio { font-size: .9rem; margin-bottom: 4px; }
+  .haku input[type="text"] { min-height: 46px; font-size: 1.05rem; }
+  .haku .painikkeet { display: flex; gap: 6px; flex: 0 0 auto; }
+  .haku .painikkeet .painike { min-height: 46px; padding: 8px 14px; }
+  .haku .painikkeet .tyhjenna { min-width: 46px; padding: 8px; font-size: 1.1rem; }
+  .pikat { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .pikat button {
+    min-height: 44px; min-width: 44px; padding: 6px 10px; border-radius: 999px; font-size: .95rem;
+    border: 1px solid var(--raja); background: #fff; font-weight: 600;
+  }
+  .pikat button[aria-pressed="true"] { background: var(--teema); border-color: var(--teema); color: #fff; }
+  .rajaus { font-weight: 700; font-size: 1.05rem; margin: 2px 0 12px; color: var(--teema); }
+  .tilastotyokalut { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .tilastotyokalut .painike { min-height: 42px; }
+  .lataa { color: var(--heikko); font-size: .9rem; }
+  .vanha { opacity: .45; filter: grayscale(1); }
+
+  .kortit { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  .tkortti {
+    background: var(--kortti); border: 1px solid var(--raja); border-radius: var(--sade);
+    padding: 12px; border-top: 5px solid var(--vari, var(--teema));
+  }
+  .tkortti.leveä { grid-column: 1 / -1; }
+  .tkortti h3 { margin: 0 0 4px; font-size: .9rem; color: var(--heikko); font-weight: 600; }
+  .tkortti .iso { font-size: 1.7rem; font-weight: 700; line-height: 1.15; }
+  .tkortti .lkm { color: var(--heikko); font-size: .88rem; }
+  .tkortti .uusia { margin-top: 6px; font-size: .9rem; }
+  @media (min-width: 620px) { .kortit { grid-template-columns: repeat(3, 1fr); } .tkortti.leveä { grid-column: auto; } }
+
+  .kaavio h2, .taulukko h2 { font-size: 1.02rem; margin: 0 0 8px; }
+  .kaavio svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .kaavio .grid { stroke: #e3e7ec; stroke-width: 1; }
+  .kaavio .akselilinja { stroke: #9aa4b1; stroke-width: 1; }
+  .kaavio text { font-family: inherit; fill: var(--teksti); }
+  .kaavio .akseli { font-size: 10px; fill: var(--heikko); }
+  .kaavio .arvo { font-size: 11px; font-weight: 700; }
+  .kaavio .pieni { font-size: 8.5px; font-weight: 600; }
+  .kaavio .nimi { font-size: 11.5px; font-weight: 600; }
+  .kaavio .n { font-size: 9.5px; fill: var(--heikko); }
+  .kaavio [data-tip] { cursor: pointer; }
+  .kaavio [data-tip]:hover { filter: brightness(.92); }
+  .selite { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .86rem; color: var(--heikko); margin-top: 8px; }
+  .selite span { display: inline-flex; align-items: center; gap: 6px; }
+  .selite i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+  .huom { font-size: .84rem; color: var(--heikko); margin: 6px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid #e6eaef; text-align: right; vertical-align: top; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: .82rem; color: var(--heikko); font-weight: 600; }
+  td.alataso { padding-left: 18px; color: #39434f; }
+  tr.paa td { font-weight: 700; }
+  td .p { display: block; white-space: nowrap; }
+  td .l { display: block; font-size: .78rem; color: var(--heikko); font-weight: 400; white-space: nowrap; }
+  .taulukko { overflow-x: auto; }
+  .paivitetty { text-align: center; color: var(--heikko); font-size: .88rem; margin-top: 4px; }
+  .tyhja { text-align: center; padding: 28px 12px; color: var(--heikko); font-weight: 600; }
+
+  #tooltip {
+    position: fixed; z-index: 50; pointer-events: none; max-width: 240px;
+    background: #1b2430; color: #fff; font-size: .85rem; padding: 7px 10px; border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25); white-space: pre-line;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="ylarivi">
+    <h1>FD-keruu</h1>
+    <button type="button" class="merkki jono" id="jono-merkki" hidden title="Lähettämättömät rivit"></button>
+    <span class="merkki" id="offline-merkki" hidden>Ei yhteyttä</span>
+    <button type="button" class="asenna" id="asenna" hidden>Asenna</button>
+  </div>
+  <nav class="valilehdet" role="tablist" aria-label="Näkymä">
+    <button type="button" role="tab" id="tab-syotto" aria-controls="syotto" aria-selected="true">Syöttö</button>
+    <button type="button" role="tab" id="tab-tilastot" aria-controls="tilastot" aria-selected="false">Tilastot</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============================ SYÖTTÖ ============================ -->
+  <section id="syotto" role="tabpanel" aria-labelledby="tab-syotto">
+    <form id="lomake" novalidate autocomplete="off">
+      <div class="kortti">
+        <div class="kentta" style="margin-top:0">
+          <label class="nimio" for="ika">Ikä <small>(vuotta)</small></label>
+          <input id="ika" name="ika" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" maxlength="3" aria-describedby="ika-virhe">
+          <div class="virhe" id="ika-virhe" data-virhe="ika"></div>
+        </div>
+      </div>
+
+      <fieldset class="kortti vert">
+        <legend>Vertikaalinen</legend>
+        <div class="kentta">
+          <span class="nimio" id="l-vert-nyt">FD nyt</span>
+          <div class="seg" role="radiogroup" aria-labelledby="l-vert-nyt" data-ryhma="vert_fd_nyt">
+            <input type="radio" name="vert_fd_nyt" id="vert-nyt-k" value="kyllä"><label for="vert-nyt-k">Kyllä</label>
+            <input type="radio" name="vert_fd_nyt" id="vert-nyt-e" value="ei"><label for="vert-nyt-e">Ei</label>
+          </div>
+          <div class="virhe" data-virhe="vert_fd_nyt"></div>
+        </div>
+        <div class="kentta">
+          <span class="nimio" id="l-vert-aiemmin">Todettu aiemmin</span>
+          <div class="seg" role="radiogroup" aria-labelledby="l-vert-aiemmin" data-ryhma="vert_fd_aiemmin">
+            <input type="radio" name="vert_fd_aiemmin" id="vert-aiemmin-k" value="kyllä"><label for="vert-aiemmin-k">Kyllä</label>
+            <input type="radio" name="vert_fd_aiemmin" id="vert-aiemmin-e" value="ei"><label for="vert-aiemmin-e">Ei</label>
+          </div>
+          <div class="virhe" data-virhe="vert_fd_aiemmin"></div>
+        </div>
+        <div class="kentta" id="vert-ehdollinen" hidden>
+          <label class="nimio" for="vert_suuruus_pd">Suuruus <small>(Δ, esim. 0,5)</small></label>
+          <input id="vert_suuruus_pd" name="vert_suuruus_pd" type="text" inputmode="decimal" enterkeyhint="done" maxlength="10">
+          <div class="virhe" data-virhe="vert_suuruus_pd"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="kortti horis">
+        <legend>Horisontaalinen</legend>
+        <div class="kentta">
+          <span class="nimio" id="l-horis-nyt">FD nyt</span>
+          <div class="seg" role="radiogroup" aria-labelledby="l-horis-nyt" data-ryhma="horis_fd_nyt">
+            <input type="radio" name="horis_fd_nyt" id="horis-nyt-k" value="kyllä"><label for="horis-nyt-k">Kyllä</label>
+            <input type="radio" name="horis_fd_nyt" id="horis-nyt-e" value="ei"><label for="horis-nyt-e">Ei</label>
+          </div>
+          <div class="virhe" data-virhe="horis_fd_nyt"></div>
+        </div>
+        <div class="kentta">
+          <span class="nimio" id="l-horis-aiemmin">Todettu aiemmin</span>
+          <div class="seg" role="radiogroup" aria-labelledby="l-horis-aiemmin" data-ryhma="horis_fd_aiemmin">
+            <input type="radio" name="horis_fd_aiemmin" id="horis-aiemmin-k" value="kyllä"><label for="horis-aiemmin-k">Kyllä</label>
+            <input type="radio" name="horis_fd_aiemmin" id="horis-aiemmin-e" value="ei"><label for="horis-aiemmin-e">Ei</label>
+          </div>
+          <div class="virhe" data-virhe="horis_fd_aiemmin"></div>
+        </div>
+        <div id="horis-ehdollinen" hidden>
+          <div class="kentta">
+            <label class="nimio" for="horis_suuruus_pd">Suuruus <small>(Δ, esim. 2 tai 1,5)</small></label>
+            <input id="horis_suuruus_pd" name="horis_suuruus_pd" type="text" inputmode="decimal" enterkeyhint="done" maxlength="10">
+            <div class="virhe" data-virhe="horis_suuruus_pd"></div>
+          </div>
+          <div class="kentta">
+            <span class="nimio" id="l-suunta">Suunta</span>
+            <div class="seg" role="radiogroup" aria-labelledby="l-suunta" data-ryhma="horis_suunta">
+              <input type="radio" name="horis_suunta" id="suunta-exo" value="exo"><label for="suunta-exo">Exo</label>
+              <input type="radio" name="horis_suunta" id="suunta-eso" value="eso"><label for="suunta-eso">Eso</label>
+            </div>
+            <div class="virhe" data-virhe="horis_suunta"></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <button type="submit" class="painike ensisijainen iso" id="tallenna">Tallenna</button>
+      <div id="lomake-ilmoitus" class="ilmoitus" role="status" aria-live="polite" hidden></div>
+      <div class="alarivi">
+        <span>Tällä istunnolla tallennettu: <strong id="istunto">0</strong></span>
+        <button type="button" class="linkkinappi" id="laheta-jono" hidden>Lähetä jono nyt</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============================ TILASTOT ============================ -->
+  <section id="tilastot" role="tabpanel" aria-labelledby="tab-tilastot" hidden>
+    <div class="kortti haku">
+      <form id="hakulomake" novalidate autocomplete="off">
+        <div class="rivi">
+          <div class="kentta">
+            <label class="nimio" for="ika-min">Ikä alkaen</label>
+            <input id="ika-min" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="ei rajaa">
+          </div>
+          <div class="kentta">
+            <label class="nimio" for="ika-max">Ikä asti</label>
+            <input id="ika-max" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="ei rajaa">
+          </div>
+          <div class="painikkeet">
+            <button type="submit" class="painike ensisijainen">Hae</button>
+            <button type="button" class="painike tyhjenna" id="tyhjenna-haku" aria-label="Tyhjennä" title="Tyhjennä">✕</button>
+          </div>
+        </div>
+        <div class="virhe" id="haku-virhe"></div>
+        <div class="pikat" role="group" aria-label="Pikavalinnat">
+          <button type="button" data-min="" data-max="">Kaikki</button>
+          <button type="button" data-min="" data-max="19">&lt;20</button>
+          <button type="button" data-min="20" data-max="39">20–39</button>
+          <button type="button" data-min="40" data-max="59">40–59</button>
+          <button type="button" data-min="60" data-max="">60+</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="tilastotyokalut">
+      <span class="lataa" id="lataa" aria-live="polite"></span>
+      <button type="button" class="painike" id="paivita">↻ Päivitä</button>
+    </div>
+    <div id="tilasto-virhe" class="ilmoitus virhe-ilm" role="alert" hidden>
+      <div id="tilasto-virhe-teksti">Tilastojen haku epäonnistui.</div>
+      <button type="button" class="painike" id="yrita-uudelleen">Yritä uudelleen</button>
+    </div>
+
+    <div id="tilasto-sisalto" hidden>
+      <div class="rajaus" id="rajaus" hidden></div>
+      <div class="kortti tyhja" id="ei-asiakkaita" hidden>Ei asiakkaita valitulla ikävälillä</div>
+      <div id="tilasto-tulokset">
+        <div class="kortit" id="kortit"></div>
+        <div class="kortti kaavio">
+          <h2>Yleisyys suunnittain</h2>
+          <div id="kaavio1"></div>
+          <div class="selite">
+            <span><i style="background:#4a5563"></i>Uusi (täysi sävy)</span>
+            <span><i style="background:#c3cad3"></i>Aiemmin todettu (vaalea sävy)</span>
+          </div>
+          <p class="huom">Pylvään korkeus = osuus kaikista asiakkaista.</p>
+        </div>
+        <div class="kortti kaavio">
+          <h2>Uusien löydösten osuus</h2>
+          <div id="kaavio2"></div>
+          <p class="huom">Uusien osuus kunkin suunnan löydöksistä.</p>
+        </div>
+        <div class="kortti kaavio" id="kaavio3-kortti">
+          <h2>Ikäryhmittäin</h2>
+          <div id="kaavio3"></div>
+          <div class="selite">
+            <span><i style="background:var(--vert)"></i>Vertikaalinen</span>
+            <span><i style="background:var(--exo)"></i>Exo</span>
+            <span><i style="background:var(--eso)"></i>Eso</span>
+          </div>
+          <p class="huom" id="kaavio3-huom">% ikäryhmän asiakkaista.</p>
+          <div class="taulukko" style="margin-top:10px"><table id="ikataulu"></table></div>
+        </div>
+        <div class="kortti taulukko">
+          <h2>Tunnusluvut</h2>
+          <table id="taulu"></table>
+        </div>
+        <div class="kortti taulukko">
+          <h2>Suuruudet (Δ)</h2>
+          <table id="suuruustaulu"></table>
+        </div>
+      </div>
+      <div class="paivitetty" id="paivitetty"></div>
+    </div>
+  </section>
+</main>
+<div id="tooltip" hidden></div>
+
+<script>
+'use strict';
+/* ====================================================================
+   KONFIGURAATIO – vaihda Apps Scriptin /exec-osoite ja token tähän.
+   Sama token asetetaan Sheetsissä: FD-keruu → Aseta token.
+   ==================================================================== */
+const CONFIG = {
+  WEB_APP_URL: "https://script.google.com/macros/s/XXXX/exec",
+  TOKEN: "sxtg3l5yC-dQwsZqZsqV8qDc",
+  VERSIO: "1.0",
+  TILASTOT_PAIVITYS_S: 60
+};
+
+const AVAIN = { jono: 'fd-keruu-jono', istunto: 'fd-keruu-istunto', stats: 'fd-keruu-stats-' };
+const $ = (s, juuri) => (juuri || document).querySelector(s);
+const $$ = (s, juuri) => Array.from((juuri || document).querySelectorAll(s));
+const NF1 = new Intl.NumberFormat('fi-FI', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const NF2 = new Intl.NumberFormat('fi-FI', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NF0 = new Intl.NumberFormat('fi-FI', { maximumFractionDigits: 1 });
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pct = p => (p === null || p === undefined) ? '–' : NF1.format(p) + ' %';
+const urlAsetettu = () => /^https:\/\/script\.google\.com\/.+\/exec$/.test(CONFIG.WEB_APP_URL) && !/XXXX/.test(CONFIG.WEB_APP_URL)
+  || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(CONFIG.WEB_APP_URL);
+
+/* ====================================================================
+   Välilehdet ja URL-hash (#syotto, #tilastot?ika_min=25&ika_max=45)
+   ==================================================================== */
+const tila = { valilehti: 'syotto', rajaus: { min: null, max: null }, ladattu: false, data: null, pyynto: 0, ajastin: null };
+
+function lueHash() {
+  const [nimi, kysely] = location.hash.replace(/^#/, '').split('?');
+  const p = new URLSearchParams(kysely || '');
+  const luku = s => (s !== null && /^\d+$/.test(s)) ? Number(s) : null;
+  return { valilehti: nimi === 'tilastot' ? 'tilastot' : 'syotto', min: luku(p.get('ika_min')), max: luku(p.get('ika_max')) };
+}
+
+function kirjoitaHash() {
+  let h = '#' + tila.valilehti;
+  if (tila.valilehti === 'tilastot') {
+    const p = new URLSearchParams();
+    if (tila.rajaus.min !== null) p.set('ika_min', tila.rajaus.min);
+    if (tila.rajaus.max !== null) p.set('ika_max', tila.rajaus.max);
+    const q = p.toString();
+    if (q) h += '?' + q;
+  }
+  if (location.hash !== h) history.replaceState(null, '', h);
+}
+
+function naytaValilehti(nimi) {
+  tila.valilehti = nimi;
+  $('#syotto').hidden = nimi !== 'syotto';
+  $('#tilastot').hidden = nimi !== 'tilastot';
+  $('#tab-syotto').setAttribute('aria-selected', String(nimi === 'syotto'));
+  $('#tab-tilastot').setAttribute('aria-selected', String(nimi === 'tilastot'));
+  kirjoitaHash();
+  piilotaTooltip();
+  if (nimi === 'tilastot') {
+    asetaHakukentat();
+    haeTilastot();
+    kaynnistaAjastin();
+  } else {
+    pysaytaAjastin();
+  }
+}
+
+$('#tab-syotto').addEventListener('click', () => naytaValilehti('syotto'));
+$('#tab-tilastot').addEventListener('click', () => naytaValilehti('tilastot'));
+window.addEventListener('hashchange', () => {
+  const h = lueHash();
+  tila.rajaus = { min: h.min, max: h.max };
+  naytaValilehti(h.valilehti);
+});
+
+/* ====================================================================
+   SYÖTTÖ
+   ==================================================================== */
+const lomake = $('#lomake');
+const RE_SUURUUS = /^\d+([.,]\d+)?$/;
+
+function arvo(nimi) {
+  const r = lomake.querySelector('input[name="' + nimi + '"]:checked');
+  return r ? r.value : '';
+}
+
+function paivitaEhdolliset() {
+  const vert = arvo('vert_fd_nyt') === 'kyllä';
+  const horis = arvo('horis_fd_nyt') === 'kyllä';
+  const vertK = $('#vert-ehdollinen'), horisK = $('#horis-ehdollinen');
+  if (!vert && !vertK.hidden) { $('#vert_suuruus_pd').value = ''; tyhjennaVirhe('vert_suuruus_pd'); }
+  if (!horis && !horisK.hidden) {
+    $('#horis_suuruus_pd').value = '';
+    $$('input[name="horis_suunta"]').forEach(r => { r.checked = false; });
+    tyhjennaVirhe('horis_suuruus_pd'); tyhjennaVirhe('horis_suunta');
+  }
+  vertK.hidden = !vert;
+  horisK.hidden = !horis;
+}
+
+function asetaVirhe(nimi, viesti) {
+  const v = lomake.querySelector('[data-virhe="' + nimi + '"]');
+  if (v) v.textContent = viesti;
+  const kentta = lomake.querySelector('input[type="text"][name="' + nimi + '"]');
+  if (kentta) kentta.setAttribute('aria-invalid', 'true');
+  const seg = lomake.querySelector('.seg[data-ryhma="' + nimi + '"]');
+  if (seg) seg.classList.add('virheellinen');
+}
+
+function tyhjennaVirhe(nimi) {
+  const v = lomake.querySelector('[data-virhe="' + nimi + '"]');
+  if (v) v.textContent = '';
+  const kentta = lomake.querySelector('input[type="text"][name="' + nimi + '"]');
+  if (kentta) kentta.removeAttribute('aria-invalid');
+  const seg = lomake.querySelector('.seg[data-ryhma="' + nimi + '"]');
+  if (seg) seg.classList.remove('virheellinen');
+}
+
+/** Palauttaa { virheet: {kenttä: viesti}, data } – samat säännöt kuin palvelimella. */
+function kokoaJaValidoi() {
+  const virheet = {};
+  const ikaS = $('#ika').value.trim();
+  if (!/^\d+$/.test(ikaS)) virheet.ika = ikaS === '' ? 'Anna ikä.' : 'Anna ikä kokonaislukuna (esim. 34).';
+
+  const kylEi = ['vert_fd_nyt', 'vert_fd_aiemmin', 'horis_fd_nyt', 'horis_fd_aiemmin'];
+  kylEi.forEach(k => { if (!arvo(k)) virheet[k] = 'Valitse kyllä tai ei.'; });
+
+  const suuruus = (id) => {
+    const s = $('#' + id).value.trim();
+    if (s === '') { virheet[id] = 'Anna suuruus prismadioptreina.'; return null; }
+    if (!RE_SUURUUS.test(s)) { virheet[id] = 'Anna luku, esim. 2, 0,5 tai 1.75.'; return null; }
+    const n = Number(s.replace(',', '.'));
+    if (!(isFinite(n) && n > 0)) { virheet[id] = 'Suuruuden on oltava suurempi kuin 0.'; return null; }
+    return n;
+  };
+
+  const data = {
+    token: CONFIG.TOKEN, versio: CONFIG.VERSIO,
+    ika: Number(ikaS),
+    vert_fd_nyt: arvo('vert_fd_nyt'), horis_fd_nyt: arvo('horis_fd_nyt'),
+    vert_fd_aiemmin: arvo('vert_fd_aiemmin'), horis_fd_aiemmin: arvo('horis_fd_aiemmin'),
+    vert_suuruus_pd: '', horis_suuruus_pd: '', horis_suunta: ''
+  };
+  if (data.vert_fd_nyt === 'kyllä') data.vert_suuruus_pd = suuruus('vert_suuruus_pd');
+  if (data.horis_fd_nyt === 'kyllä') {
+    data.horis_suuruus_pd = suuruus('horis_suuruus_pd');
+    data.horis_suunta = arvo('horis_suunta');
+    if (!data.horis_suunta) virheet.horis_suunta = 'Valitse exo tai eso.';
+  }
+  return { virheet, data };
+}
+
+function uuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+}
+
+class VerkkoVirhe extends Error {}
+
+async function lahetaRivi(data) {
+  let res;
+  try {
+    const ohjain = new AbortController();
+    const aikaraja = setTimeout(() => ohjain.abort(), 25000);
+    res = await fetch(CONFIG.WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // ei CORS-preflightia
+      body: JSON.stringify(data),
+      signal: ohjain.signal
+    });
+    clearTimeout(aikaraja);
+  } catch (e) {
+    throw new VerkkoVirhe('Ei yhteyttä palvelimeen');
+  }
+  if (!res.ok) throw new VerkkoVirhe('Palvelin vastasi ' + res.status);
+  try { return await res.json(); } catch (e) { throw new VerkkoVirhe('Palvelimen vastaus ei ollut JSONia'); }
+}
+
+function ilmoita(tyyppi, teksti) {
+  const el = $('#lomake-ilmoitus');
+  el.className = 'ilmoitus ' + tyyppi;
+  el.textContent = teksti;
+  el.hidden = false;
+}
+
+function kasvataIstunto() {
+  const n = Number(sessionStorage.getItem(AVAIN.istunto) || 0) + 1;
+  sessionStorage.setItem(AVAIN.istunto, String(n));
+  $('#istunto').textContent = n;
+}
+
+function tyhjennaLomake() {
+  lomake.reset();
+  $$('[data-virhe]', lomake).forEach(v => tyhjennaVirhe(v.dataset.virhe));
+  paivitaEhdolliset();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  $('#ika').focus({ preventScroll: true });
+}
+
+lomake.addEventListener('change', e => {
+  if (e.target.name) tyhjennaVirhe(e.target.name);
+  paivitaEhdolliset();
+});
+lomake.addEventListener('input', e => {
+  if (e.target.type === 'text') tyhjennaVirhe(e.target.name);
+});
+
+lomake.addEventListener('submit', async e => {
+  e.preventDefault();
+  $$('[data-virhe]', lomake).forEach(v => tyhjennaVirhe(v.dataset.virhe));
+  const { virheet, data } = kokoaJaValidoi();
+  const avaimet = Object.keys(virheet);
+  if (avaimet.length) {
+    avaimet.forEach(k => asetaVirhe(k, virheet[k]));
+    ilmoita('virhe-ilm', 'Tarkista merkityt kentät.');
+    const eka = lomake.querySelector('[aria-invalid="true"], .seg.virheellinen input');
+    if (eka) { eka.closest('.kentta').scrollIntoView({ behavior: 'smooth', block: 'center' }); if (eka.type === 'text') eka.focus({ preventScroll: true }); }
+    return;
+  }
+  if (!urlAsetettu()) {
+    ilmoita('virhe-ilm', 'Palvelimen osoitetta ei ole asetettu (CONFIG.WEB_APP_URL). Riviä ei tallennettu.');
+    return;
+  }
+  data.id = uuid();
+  const nappi = $('#tallenna');
+  nappi.disabled = true;
+  nappi.textContent = 'Tallennetaan…';
+  try {
+    const vastaus = await lahetaRivi(data);
+    if (vastaus && vastaus.ok) {
+      kasvataIstunto();
+      ilmoita('ok', (vastaus.tupla ? 'Tallennettu jo aiemmin – rivi ' : 'Tallennettu – rivi ') + vastaus.rivi);
+      tyhjennaLomake();
+      tallennusOnnistui();
+      lahetaJono();
+    } else {
+      ilmoita('virhe-ilm', 'Tallennus hylättiin: ' + ((vastaus && vastaus.virhe) || 'tuntematon virhe'));
+    }
+  } catch (err) {
+    if (err instanceof VerkkoVirhe) {
+      lisaaJonoon(data);
+      kasvataIstunto();
+      ilmoita('varoitus', 'Ei yhteyttä – rivi tallennettiin puhelimeen ja lähetetään automaattisesti, kun yhteys palaa.');
+      tyhjennaLomake();
+    } else {
+      ilmoita('virhe-ilm', 'Tallennus epäonnistui: ' + err.message);
+    }
+  } finally {
+    nappi.disabled = false;
+    nappi.textContent = 'Tallenna';
+  }
+});
+
+/* ---------- Offline-jono (localStorage) ---------- */
+function lueJono() {
+  try { return JSON.parse(localStorage.getItem(AVAIN.jono) || '[]'); } catch (e) { return []; }
+}
+function kirjoitaJono(j) {
+  if (j.length) localStorage.setItem(AVAIN.jono, JSON.stringify(j));
+  else localStorage.removeItem(AVAIN.jono);
+  paivitaJonoUI();
+}
+function lisaaJonoon(data) {
+  const j = lueJono();
+  j.push(data);
+  kirjoitaJono(j);
+}
+function paivitaJonoUI() {
+  const n = lueJono().length;
+  const merkki = $('#jono-merkki');
+  merkki.hidden = n === 0;
+  merkki.textContent = 'Jonossa ' + n;
+  $('#laheta-jono').hidden = n === 0;
+}
+
+let jonoKaynnissa = false;
+async function lahetaJono() {
+  if (jonoKaynnissa || !urlAsetettu()) return;
+  if (!lueJono().length) return;
+  jonoKaynnissa = true;
+  let lahetetty = 0;
+  try {
+    while (lueJono().length) {
+      const rivi = lueJono()[0];
+      rivi.token = CONFIG.TOKEN; // tokenin vaihto ei jumita vanhaa jonoa
+      let v;
+      try { v = await lahetaRivi(rivi); } catch (e) { break; } // edelleen offline
+      if (v && v.ok) {
+        kirjoitaJono(lueJono().filter(x => x.id !== rivi.id));
+        lahetetty++;
+      } else {
+        ilmoita('virhe-ilm', 'Jonossa olevan rivin tallennus hylättiin: ' + ((v && v.virhe) || 'tuntematon virhe') +
+          '. Rivi jätettiin jonoon.');
+        break;
+      }
+    }
+  } finally {
+    jonoKaynnissa = false;
+  }
+  if (lahetetty) {
+    const jaljella = lueJono().length;
+    ilmoita('ok', 'Jonosta lähetetty ' + lahetetty + ' riviä' + (jaljella ? ' (jonossa vielä ' + jaljella + ')' : '') + '.');
+    tallennusOnnistui();
+  }
+}
+
+$('#laheta-jono').addEventListener('click', lahetaJono);
+$('#jono-merkki').addEventListener('click', () => { naytaValilehti('syotto'); lahetaJono(); });
+window.addEventListener('online', () => { paivitaYhteys(); lahetaJono(); });
+window.addEventListener('offline', paivitaYhteys);
+function paivitaYhteys() { $('#offline-merkki').hidden = navigator.onLine; }
+setInterval(lahetaJono, 30000);
+
+function tallennusOnnistui() {
+  if (tila.ladattu) haeTilastot({ hiljainen: true });
+}
+
+/* ====================================================================
+   TILASTOT
+   ==================================================================== */
+function asetaHakukentat() {
+  $('#ika-min').value = tila.rajaus.min === null ? '' : tila.rajaus.min;
+  $('#ika-max').value = tila.rajaus.max === null ? '' : tila.rajaus.max;
+  $('#haku-virhe').textContent = '';
+  $$('.pikat button').forEach(b => {
+    const bmin = b.dataset.min === '' ? null : Number(b.dataset.min);
+    const bmax = b.dataset.max === '' ? null : Number(b.dataset.max);
+    b.setAttribute('aria-pressed', String(bmin === tila.rajaus.min && bmax === tila.rajaus.max));
+  });
+}
+
+function asetaRajaus(min, max) {
+  tila.rajaus = { min, max };
+  kirjoitaHash();
+  asetaHakukentat();
+  haeTilastot();
+}
+
+$('#hakulomake').addEventListener('submit', e => {
+  e.preventDefault();
+  const s1 = $('#ika-min').value.trim(), s2 = $('#ika-max').value.trim();
+  const ok = s => s === '' || /^\d+$/.test(s);
+  if (!ok(s1) || !ok(s2)) { $('#haku-virhe').textContent = 'Anna iät kokonaislukuina (tai jätä tyhjäksi).'; return; }
+  const min = s1 === '' ? null : Number(s1), max = s2 === '' ? null : Number(s2);
+  if (min !== null && max !== null && min > max) { $('#haku-virhe').textContent = '"Ikä alkaen" ei voi olla suurempi kuin "Ikä asti".'; return; }
+  asetaRajaus(min, max);
+});
+$('#tyhjenna-haku').addEventListener('click', () => asetaRajaus(null, null));
+$$('.pikat button').forEach(b => b.addEventListener('click', () => {
+  asetaRajaus(b.dataset.min === '' ? null : Number(b.dataset.min), b.dataset.max === '' ? null : Number(b.dataset.max));
+}));
+$('#paivita').addEventListener('click', () => haeTilastot());
+$('#yrita-uudelleen').addEventListener('click', () => haeTilastot());
+
+function kaynnistaAjastin() {
+  pysaytaAjastin();
+  tila.ajastin = setInterval(() => {
+    if (tila.valilehti === 'tilastot' && document.visibilityState === 'visible') haeTilastot({ hiljainen: true });
+  }, CONFIG.TILASTOT_PAIVITYS_S * 1000);
+}
+function pysaytaAjastin() { if (tila.ajastin) clearInterval(tila.ajastin); tila.ajastin = null; }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && tila.valilehti === 'tilastot') haeTilastot({ hiljainen: true });
+});
+
+const cacheAvain = r => AVAIN.stats + (r.min === null ? '' : r.min) + '_' + (r.max === null ? '' : r.max);
+
+async function haeTilastot(asetukset) {
+  const hiljainen = asetukset && asetukset.hiljainen;
+  const rajaus = { min: tila.rajaus.min, max: tila.rajaus.max };
+  const nro = ++tila.pyynto;
+  if (!hiljainen) $('#lataa').textContent = 'Haetaan…';
+  $('#paivita').disabled = true;
+  try {
+    if (!urlAsetettu()) throw new Error('Palvelimen osoitetta ei ole asetettu (CONFIG.WEB_APP_URL).');
+    const p = new URLSearchParams({ action: 'stats', token: CONFIG.TOKEN });
+    if (rajaus.min !== null) p.set('ika_min', rajaus.min);
+    if (rajaus.max !== null) p.set('ika_max', rajaus.max);
+    const ohjain = new AbortController();
+    const aikaraja = setTimeout(() => ohjain.abort(), 25000);
+    let res;
+    try {
+      res = await fetch(CONFIG.WEB_APP_URL + '?' + p.toString(), { signal: ohjain.signal });
+    } catch (e) {
+      throw new Error('Ei yhteyttä palvelimeen.');
+    } finally { clearTimeout(aikaraja); }
+    if (!res.ok) throw new Error('Palvelin vastasi ' + res.status + '.');
+    const d = await res.json();
+    if (!d || !d.ok) throw new Error((d && d.virhe) || 'Tuntematon virhe.');
+    if (nro !== tila.pyynto) return; // uudempi pyyntö on jo matkalla
+    try { sessionStorage.setItem(cacheAvain(rajaus), JSON.stringify(d)); } catch (e) { /* täynnä */ }
+    tila.ladattu = true;
+    tila.data = d;
+    $('#tilasto-virhe').hidden = true;
+    piirraTilastot(d, false);
+  } catch (err) {
+    if (nro !== tila.pyynto) return;
+    $('#tilasto-virhe-teksti').textContent = 'Tilastojen haku epäonnistui. ' + err.message;
+    $('#tilasto-virhe').hidden = false;
+    let vanha = null;
+    try { vanha = JSON.parse(sessionStorage.getItem(cacheAvain(rajaus)) || 'null'); } catch (e) { /* */ }
+    if (vanha) piirraTilastot(vanha, true);
+    else $('#tilasto-sisalto').hidden = true;
+  } finally {
+    if (nro === tila.pyynto) { $('#lataa').textContent = ''; $('#paivita').disabled = false; }
+  }
+}
+
+function rajausTeksti(r) {
+  if (r.min !== null && r.max !== null) return 'ikä ' + r.min + '–' + r.max + ' v.';
+  if (r.min !== null) return 'ikä vähintään ' + r.min + ' v.';
+  if (r.max !== null) return 'ikä enintään ' + r.max + ' v.';
+  return null;
+}
+
+function piirraTilastot(d, vanha) {
+  const sisalto = $('#tilasto-sisalto');
+  sisalto.hidden = false;
+  $('#tilasto-tulokset').classList.toggle('vanha', vanha);
+  const r = { min: d.rajaus ? d.rajaus.ika_min : null, max: d.rajaus ? d.rajaus.ika_max : null };
+  const rt = rajausTeksti(r);
+  const rajattu = rt !== null;
+  $('#rajaus').hidden = !rajattu;
+  if (rajattu) $('#rajaus').textContent = 'Rajaus: ' + rt + ' (n = ' + d.n + ')';
+
+  const tyhja = rajattu && d.n === 0;
+  $('#ei-asiakkaita').hidden = !tyhja;
+  $('#tilasto-tulokset').hidden = tyhja;
+  const aika = new Date(d.paivitetty);
+  $('#paivitetty').textContent = 'Päivitetty ' + (isNaN(aika) ? '–' : aika.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit' })) +
+    (vanha ? ' (vanha tieto)' : '');
+  if (tyhja) return;
+
+  piirraKortit(d);
+  $('#kaavio1').innerHTML = kaavio1(d);
+  $('#kaavio2').innerHTML = kaavio2(d);
+  const ryhmat = d.ikaryhmat.filter(g => !rajattu || g.osuu);
+  $('#kaavio3-kortti').hidden = ryhmat.length === 0;
+  $('#kaavio3').innerHTML = ryhmat.length ? kaavio3(ryhmat) : '';
+  $('#kaavio3-huom').textContent = '% ikäryhmän asiakkaista.' + (rajattu ? ' Vain rajaukseen osuvat ryhmät ja niistä rajaukseen osuvat asiakkaat.' : '');
+  $('#ikataulu').innerHTML = ikataulu(ryhmat);
+  $('#taulu').innerHTML = taulu(d);
+  $('#suuruustaulu').innerHTML = suuruustaulu(d);
+}
+
+function lkm(a, b) { return b ? a + '/' + b : '0/0'; }
+
+function piirraKortit(d) {
+  const N = d.n;
+  const kortti = (otsikko, vari, o, uusi, lisa) => `
+    <div class="tkortti" style="--vari:${vari}">
+      <h3>${esc(otsikko)}</h3>
+      <div class="iso">${pct(o.pct)}</div>
+      <div class="lkm">${lkm(o.n, N)}</div>
+      ${uusi ? `<div class="uusia">josta uusia <strong>${pct(o.uusi_pct_loydoksista)}</strong> <span class="lkm">(${lkm(o.uusi_n, o.n)})</span></div>` : ''}
+      ${lisa || ''}
+    </div>`;
+  $('#kortit').innerHTML = `
+    <div class="tkortti" style="--vari:#5b6676">
+      <h3>Asiakkaita (N)</h3>
+      <div class="iso">${N}</div>
+      <div class="lkm">tutkittua asiakasta</div>
+    </div>
+    ${kortti('Vertikaalinen FD', 'var(--vert)', d.vert, true)}
+    ${kortti('Exo', 'var(--exo)', d.exo, true)}
+    ${kortti('Eso', 'var(--eso)', d.eso, true)}
+    ${kortti('Jokin FD', 'var(--teema)', d.jokin, false, `<div class="uusia">molemmat ${pct(d.molemmat.pct)} <span class="lkm">(${lkm(d.molemmat.n, N)})</span></div>`)}
+    ${kortti('Horisontaalinen FD', '#7a4a9e', d.horis, true)}`;
+}
+
+/* ---------- SVG-kaaviot ---------- */
+function asteikko(max) {
+  if (!(max > 0)) max = 10;
+  const raaka = max / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(raaka)));
+  const norm = raaka / mag;
+  const askel = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+  return { yMax: Math.ceil(max / askel - 1e-9) * askel, askel };
+}
+const akseliLuku = (v, askel) => (askel < 1 ? NF1.format(v) : NF0.format(v)) + ' %';
+
+const SUUNNAT = [
+  { k: 'vert', nimi: 'Vertikaalinen', vari: 'var(--vert)', vaalea: 'var(--vert-v)' },
+  { k: 'exo', nimi: 'Exo', vari: 'var(--exo)', vaalea: 'var(--exo-v)' },
+  { k: 'eso', nimi: 'Eso', vari: 'var(--eso)', vaalea: 'var(--eso-v)' }
+];
+
+function suorakaide(x, y, w, h, vari, tip) {
+  if (h <= 0 || w <= 0) return '';
+  return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${vari}" rx="2" data-tip="${esc(tip)}"><title>${esc(tip)}</title></rect>`;
+}
+
+function kaavio1(d) {
+  const N = d.n, W = 360, H = 232, x0 = 46, x1 = 352, y0 = 22, y1 = 196;
+  const tiedot = SUUNNAT.map(s => {
+    const o = d[s.k];
+    return { s, o, uusi: N ? o.uusi_n / N * 100 : 0, aiemmin: N ? o.aiemmin_n / N * 100 : 0 };
+  });
+  const { yMax, askel } = asteikko(Math.max(...tiedot.map(t => t.uusi + t.aiemmin)));
+  const y = v => y1 - v / yMax * (y1 - y0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Yleisyys suunnittain, osuus kaikista asiakkaista">`;
+  for (let v = 0; v <= yMax + 1e-9; v += askel) {
+    s += `<line class="grid" x1="${x0}" x2="${x1}" y1="${y(v)}" y2="${y(v)}"/>`;
+    s += `<text class="akseli" x="${x0 - 6}" y="${y(v) + 3.5}" text-anchor="end">${akseliLuku(v, askel)}</text>`;
+  }
+  s += `<line class="akselilinja" x1="${x0}" x2="${x1}" y1="${y1}" y2="${y1}"/>`;
+  const lohko = (x1 - x0) / 3, bw = Math.min(64, lohko * 0.52);
+  tiedot.forEach((t, i) => {
+    const cx = x0 + lohko * i + lohko / 2, bx = cx - bw / 2;
+    const yU = y(t.uusi), yA = y(t.uusi + t.aiemmin);
+    s += suorakaide(bx, yU, bw, y1 - yU, t.s.vari,
+      `${t.s.nimi}, uusi: ${pct(t.o.uusi_pct_kaikista)} (${lkm(t.o.uusi_n, N)})`);
+    s += suorakaide(bx, yA, bw, yU - yA, t.s.vaalea,
+      `${t.s.nimi}, aiemmin todettu: ${pct(t.o.aiemmin_pct_kaikista)} (${lkm(t.o.aiemmin_n, N)})`);
+    s += `<text class="arvo" x="${cx}" y="${yA - 6}" text-anchor="middle">${pct(t.o.pct)}</text>`;
+    s += `<text class="nimi" x="${cx}" y="${y1 + 18}" text-anchor="middle">${t.s.nimi}</text>`;
+    s += `<text class="n" x="${cx}" y="${y1 + 31}" text-anchor="middle">${lkm(t.o.n, N)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+function kaavio2(d) {
+  const W = 360, riviK = 38, y0 = 6, x0 = 92, x1 = 290, H = y0 + riviK * 3 + 22;
+  const x = v => x0 + v / 100 * (x1 - x0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Uusien löydösten osuus suunnittain">`;
+  [0, 25, 50, 75, 100].forEach(v => {
+    s += `<line class="grid" x1="${x(v)}" x2="${x(v)}" y1="${y0}" y2="${y0 + riviK * 3}"/>`;
+    s += `<text class="akseli" x="${x(v)}" y="${y0 + riviK * 3 + 14}" text-anchor="middle">${v} %</text>`;
+  });
+  SUUNNAT.forEach((su, i) => {
+    const o = d[su.k];
+    const yy = y0 + riviK * i + 8, h = riviK - 16;
+    const p = o.uusi_pct_loydoksista;
+    s += `<text class="nimi" x="${x0 - 8}" y="${yy + h / 2 + 4}" text-anchor="end">${su.nimi}</text>`;
+    s += `<rect x="${x0}" y="${yy}" width="${x1 - x0}" height="${h}" fill="#eef1f5" rx="3"/>`;
+    s += suorakaide(x0, yy, (p || 0) / 100 * (x1 - x0), h, su.vari,
+      `${su.nimi}: uusia ${pct(p)} löydöksistä (${lkm(o.uusi_n, o.n)})`);
+    s += `<text class="arvo" x="${x1 + 6}" y="${yy + h / 2 + 4}">${pct(p)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+function kaavio3(ryhmat) {
+  const W = 360, H = 240, x0 = 40, x1 = 354, y0 = 18, y1 = 196;
+  const arvot = ryhmat.flatMap(g => [g.vert_pct, g.exo_pct, g.eso_pct]).map(v => v || 0);
+  const { yMax, askel } = asteikko(Math.max(...arvot));
+  const y = v => y1 - v / yMax * (y1 - y0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="FD ikäryhmittäin">`;
+  for (let v = 0; v <= yMax + 1e-9; v += askel) {
+    s += `<line class="grid" x1="${x0}" x2="${x1}" y1="${y(v)}" y2="${y(v)}"/>`;
+    s += `<text class="akseli" x="${x0 - 5}" y="${y(v) + 3.5}" text-anchor="end">${akseliLuku(v, askel)}</text>`;
+  }
+  s += `<line class="akselilinja" x1="${x0}" x2="${x1}" y1="${y1}" y2="${y1}"/>`;
+  const lohko = (x1 - x0) / ryhmat.length;
+  const bw = Math.min(26, lohko * 0.8 / 3);
+  ryhmat.forEach((g, i) => {
+    const cx = x0 + lohko * i + lohko / 2;
+    SUUNNAT.forEach((su, j) => {
+      const v = g[su.k + '_pct'];
+      const bx = cx - bw * 1.5 + bw * j;
+      const yy = y(v || 0);
+      s += suorakaide(bx + 1, yy, bw - 2, y1 - yy, su.vari,
+        `${g.ryhma}, ${su.nimi}: ${pct(v)} (${lkm(g[su.k + '_n'], g.n)})\nuusia ${pct(g[su.k + '_uusi_pct'])} löydöksistä`);
+      if (v !== null) s += `<text class="pieni" x="${bx + bw / 2}" y="${yy - 3}" text-anchor="middle">${NF1.format(v)}</text>`;
+    });
+    s += `<text class="nimi" x="${cx}" y="${y1 + 17}" text-anchor="middle">${esc(g.ryhma)}</text>`;
+    s += `<text class="n" x="${cx}" y="${y1 + 30}" text-anchor="middle">n = ${g.n}</text>`;
+  });
+  return s + '</svg>';
+}
+
+/* ---------- Taulukot ---------- */
+const solu = (p, a, b) => `<td><span class="p">${pct(p)}</span><span class="l">${lkm(a, b)}</span></td>`;
+const tyhjaSolu = '<td>–</td>';
+
+function taulu(d) {
+  const N = d.n;
+  const rivi = (nimi, luokka, kaikista, loyd) => `<tr class="${luokka}"><td class="${luokka === 'ala' ? 'alataso' : ''}">${nimi}</td>${kaikista}${loyd}</tr>`;
+  const suunta = (nimi, o, loydNimi, osuusHoris) => [
+    rivi(nimi, 'paa', solu(o.pct, o.n, N), osuusHoris ? solu(o.osuus_horis_pct, o.n, d.horis.n) : tyhjaSolu),
+    rivi('uusi', 'ala', solu(o.uusi_pct_kaikista, o.uusi_n, N), solu(o.uusi_pct_loydoksista, o.uusi_n, o.n)),
+    rivi('aiemmin todettu', 'ala', solu(o.aiemmin_pct_kaikista, o.aiemmin_n, N), solu(o.aiemmin_pct_loydoksista, o.aiemmin_n, o.n))
+  ].join('');
+  return `<thead><tr><th>Tunnusluku</th><th>% kaikista</th><th>% löydöksistä</th></tr></thead><tbody>
+    <tr class="paa"><td>Asiakkaita (N)</td><td>${N}</td><td></td></tr>
+    ${suunta('Vertikaalinen FD', d.vert)}
+    ${rivi('Horisontaalinen FD (kaikki)', 'paa', solu(d.horis.pct, d.horis.n, N), tyhjaSolu)}
+    ${suunta('Exo <small>(% horisontaalisista)</small>', d.exo, 'exo', true)}
+    ${suunta('Eso <small>(% horisontaalisista)</small>', d.eso, 'eso', true)}
+    ${rivi('Jokin FD (V tai H)', 'paa', solu(d.jokin.pct, d.jokin.n, N), tyhjaSolu)}
+    ${rivi('Molemmat (V ja H)', 'paa', solu(d.molemmat.pct, d.molemmat.n, N), tyhjaSolu)}
+  </tbody>`;
+}
+
+function ikataulu(ryhmat) {
+  if (!ryhmat.length) return '';
+  const s = (g, k) => `<td><span class="p">${pct(g[k + '_pct'])}</span><span class="l">uusia ${pct(g[k + '_uusi_pct'])}</span></td>`;
+  return `<thead><tr><th>Ikäryhmä</th><th>n</th><th>Vert.</th><th>Exo</th><th>Eso</th></tr></thead><tbody>` +
+    ryhmat.map(g => `<tr><td>${esc(g.ryhma)}</td><td>${g.n}</td>${s(g, 'vert')}${s(g, 'exo')}${s(g, 'eso')}</tr>`).join('') +
+    '</tbody>';
+}
+
+function suuruustaulu(d) {
+  const luku = v => (v === null || v === undefined) ? '–' : NF2.format(v);
+  const rivi = (nimi, o) => `<tr><td>${nimi}</td><td>${o.n}</td><td>${luku(o.ka)}</td><td>${luku(o.md)}</td></tr>`;
+  return `<thead><tr><th>Suunta</th><th>n</th><th>Keskiarvo</th><th>Mediaani</th></tr></thead><tbody>
+    ${rivi('Vertikaalinen', d.suuruudet.vert)}${rivi('Exo', d.suuruudet.exo)}${rivi('Eso', d.suuruudet.eso)}</tbody>`;
+}
+
+/* ---------- Tooltip (hiiri ja kosketus) ---------- */
+const tooltip = $('#tooltip');
+function naytaTooltip(teksti, x, y) {
+  tooltip.textContent = teksti;
+  tooltip.hidden = false;
+  const r = tooltip.getBoundingClientRect();
+  let vasen = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8);
+  let yla = y - r.height - 14;
+  if (yla < 8) yla = y + 18;
+  tooltip.style.left = vasen + 'px';
+  tooltip.style.top = yla + 'px';
+}
+function piilotaTooltip() { tooltip.hidden = true; }
+$('#tilastot').addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  const t = e.target.closest('[data-tip]');
+  if (t) naytaTooltip(t.dataset.tip, e.clientX, e.clientY); else piilotaTooltip();
+});
+$('#tilastot').addEventListener('pointerleave', piilotaTooltip);
+$('#tilastot').addEventListener('click', e => {
+  const t = e.target.closest('[data-tip]');
+  if (t) naytaTooltip(t.dataset.tip, e.clientX, e.clientY); else piilotaTooltip();
+});
+window.addEventListener('scroll', piilotaTooltip, { passive: true });
+
+/* ====================================================================
+   PWA: asennus ja service worker
+   ==================================================================== */
+const asennaNappi = $('#asenna');
+function paivitaAsennus() { asennaNappi.hidden = !window.__installPrompt; }
+document.addEventListener('fd-asennettavissa', paivitaAsennus);
+asennaNappi.addEventListener('click', async () => {
+  const kehote = window.__installPrompt;
+  if (!kehote) return;
+  kehote.prompt();
+  try { await kehote.userChoice; } catch (e) { /* */ }
+  window.__installPrompt = null;
+  paivitaAsennus();
+});
+window.addEventListener('appinstalled', () => { window.__installPrompt = null; paivitaAsennus(); });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => { /* ei kriittinen */ });
+  });
+}
+
+/* ====================================================================
+   Käynnistys
+   ==================================================================== */
+(function alusta() {
+  $('#istunto').textContent = sessionStorage.getItem(AVAIN.istunto) || '0';
+  paivitaJonoUI();
+  paivitaYhteys();
+  paivitaAsennus();
+  paivitaEhdolliset();
+  const h = lueHash();
+  tila.rajaus = { min: h.min, max: h.max };
+  naytaValilehti(h.valilehti);
+  lahetaJono();
+})();
+</script>
+</body>
+</html>
