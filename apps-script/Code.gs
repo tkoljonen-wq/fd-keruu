@@ -408,6 +408,7 @@ function rakennaTilastot_() {
 
   // --- Tilastot ---
   const t = valmisteleValilehti_(ss, TILASTOT, 1);
+  tunnistaErotin_(t);
   t.getRange('A1').setValue('FD-keruu – tilastot').setFontSize(14).setFontWeight('bold');
   t.getRange('A2').setValue('Päivittyy automaattisesti kaavoilla. Älä kirjoita tälle välilehdelle.')
     .setFontColor('#666666');
@@ -436,16 +437,16 @@ function rakennaTilastot_() {
     .requireNumberGreaterThanOrEqualTo(0)
     .setAllowInvalid(false).setHelpText('Kokonaisluku 0 tai suurempi. Tyhjä = ei rajaa.').build());
   h.getRange('C2').setValue('← tyhjä = ei rajaa').setFontColor('#666666');
-  h.getRange('B4').setFormula('=IF(OR(AND($B$2<>"",$B$2<>INT($B$2)),AND($B$3<>"",$B$3<>INT($B$3))),' +
-    '"⚠ Anna iät kokonaislukuina",IF(AND($B$2<>"",$B$3<>"",$B$2>$B$3),"⚠ Ikä alkaen on suurempi kuin ikä asti",""))')
+  h.getRange('B4').setFormula(kaava_('=IF(OR(AND($B$2<>"",$B$2<>INT($B$2)),AND($B$3<>"",$B$3<>INT($B$3))),' +
+    '"⚠ Anna iät kokonaislukuina",IF(AND($B$2<>"",$B$3<>"",$B$2>$B$3),"⚠ Ikä alkaen on suurempi kuin ikä asti",""))'))
     .setFontColor('#b00020').setFontWeight('bold');
 
   const ALA = 'IF($B$2="",0,$B$2)';
   const YLA = 'IF($B$3="",' + YLARAJA_KAAVOISSA + ',$B$3)';
   const ha = kirjoitaLohkoA_(h, 7, ALA, YLA);
-  h.getRange('A5').setFormula('="Rajaus: ikä "&IF(AND($B$2="",$B$3=""),"kaikki",' +
+  h.getRange('A5').setFormula(kaava_('="Rajaus: ikä "&IF(AND($B$2="",$B$3=""),"kaikki",' +
     'IF($B$2="","enintään "&$B$3&" v.",IF($B$3="","vähintään "&$B$2&" v.",$B$2&"–"&$B$3&" v.")))' +
-    '&" (n = "&' + ha.nRef + '&")"').setFontWeight('bold').setFontSize(12);
+    '&" (n = "&' + ha.nRef + '&")"')).setFontWeight('bold').setFontSize(12);
   const hb = kirjoitaLohkoB_(h, ha.loppu + 2, ha);
   kirjoitaSuuruudet_(h, hb.loppu + 2, ALA, YLA);
   h.setColumnWidth(1, 230);
@@ -639,15 +640,32 @@ function lisaaKaavio2_(sh, alue, rivi, sarake) {
 }
 
 /**
- * Kirjoittaa taulukon, jossa on sekä tekstiä että kaavoja. Kaavat asetetaan setFormula-kutsulla,
- * joka hyväksyy aina englantilaisen syntaksin (pilkut). setValues tulkitsisi kaavat taulukon
- * aluekohtaisella asetuksella (fi: puolipisteet), jolloin ne näyttäisivät virhettä.
+ * Kaavojen argumenttierotin riippuu taulukon aluekohtaisesta asetuksesta (en: pilkku, fi: puolipiste).
+ * Tunnistetaan kirjoittamalla testikaava pilkuilla ja katsomalla, laskeeko Sheets sen.
+ */
+let EROTIN_ = ',';
+function tunnistaErotin_(sh) {
+  const solu = sh.getRange(1, 1);
+  solu.setFormula('=IF(TRUE,1,2)');
+  SpreadsheetApp.flush();
+  EROTIN_ = solu.getValue() === 1 ? ',' : ';';
+  solu.clearContent();
+}
+
+/** Muuntaa pilkuilla kirjoitetun kaavan taulukon erottimelle (lainausmerkkien sisältö säilyy). */
+function kaava_(f) {
+  if (EROTIN_ === ',') return f;
+  return f.replace(/("[^"]*")|,/g, (m, teksti) => teksti || EROTIN_);
+}
+
+/**
+ * Kirjoittaa taulukon, jossa on sekä tekstiä että kaavoja. Kaavat muunnetaan taulukon erottimelle.
  */
 function kirjoita_(alue, rivit) {
   alue.setValues(rivit.map(r => r.map(x => (typeof x === 'string' && x.charAt(0) === '=') ? '' : x)));
   const r0 = alue.getRow(), s0 = alue.getColumn(), sh = alue.getSheet();
   rivit.forEach((r, i) => r.forEach((x, j) => {
-    if (typeof x === 'string' && x.charAt(0) === '=') sh.getRange(r0 + i, s0 + j).setFormula(x);
+    if (typeof x === 'string' && x.charAt(0) === '=') sh.getRange(r0 + i, s0 + j).setFormula(kaava_(x));
   }));
   return alue;
 }
