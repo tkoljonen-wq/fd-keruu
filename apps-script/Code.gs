@@ -431,11 +431,13 @@ function rakennaTilastot_() {
   h.getRange('A2:A3').setValues([['Ikä alkaen'], ['Ikä asti']]).setFontWeight('bold');
   const syotto = h.getRange('B2:B3');
   syotto.setValues(vanhatRajat).setBackground('#fff3c4').setNumberFormat('0');
+  // Ei kaavapohjaista sääntöä: sen syntaksi riippuu taulukon aluekohtaisesta asetuksesta (fi: puolipisteet).
   syotto.setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied('=OR(B2="",AND(ISNUMBER(B2),B2>=0,B2=INT(B2)))')
+    .requireNumberGreaterThanOrEqualTo(0)
     .setAllowInvalid(false).setHelpText('Kokonaisluku 0 tai suurempi. Tyhjä = ei rajaa.').build());
   h.getRange('C2').setValue('← tyhjä = ei rajaa').setFontColor('#666666');
-  h.getRange('B4').setFormula('=IF(AND($B$2<>"",$B$3<>"",$B$2>$B$3),"⚠ Ikä alkaen on suurempi kuin ikä asti","")')
+  h.getRange('B4').setFormula('=IF(OR(AND($B$2<>"",$B$2<>INT($B$2)),AND($B$3<>"",$B$3<>INT($B$3))),' +
+    '"⚠ Anna iät kokonaislukuina",IF(AND($B$2<>"",$B$3<>"",$B$2>$B$3),"⚠ Ikä alkaen on suurempi kuin ikä asti",""))')
     .setFontColor('#b00020').setFontWeight('bold');
 
   const ALA = 'IF($B$2="",0,$B$2)';
